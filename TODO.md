@@ -1,0 +1,3 @@
+- [ ] Windows support
+- [ ] Introduce region states to allow for region reuse and other stuff
+- [ ] Store allocation metadata which will allow resizing of allocations
