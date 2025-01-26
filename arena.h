@@ -12,6 +12,7 @@ typedef struct ArenaRegion {
 
 typedef struct {
     ArenaRegion* head;
+    ArenaRegion* region_pool;
 } Arena;
 
 void* arena_alloc(Arena*, size_t);
@@ -22,8 +23,10 @@ void arena_free(Arena*);
 #if defined(__unix__) || defined(__unix) || defined(__APPLE__)
 
 #include <sys/mman.h>
+#include <unistd.h>
 
 #define ARENA_ALLOC_PAGE(sz) (mmap(NULL, (sz), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0))
+#define ARENA_ALLOC_SMOL(sz) (sbrk((sz)))
 
 #else
 
@@ -37,13 +40,33 @@ static inline uintptr_t arena_align_ptr(uintptr_t size, uintptr_t align) {
     return size + ((align - (size & (align - 1))) & (align - 1));
 }
 
-ArenaRegion* arena_alloc_region(size_t size) {
-    ArenaRegion* region = ARENA_ALLOC_PAGE(arena_align_ptr(size, ARENA_PAGE_SIZE) + sizeof(ArenaRegion));
-    region->data = (void*)(region) + sizeof(ArenaRegion);
-    region->size = size;
-    region->off = 0;
-    region->next = NULL;
-    return region;
+ArenaRegion* arena_alloc_region(Arena* arena, size_t size) {
+    size = arena_align_ptr(size, ARENA_PAGE_SIZE);
+
+    ArenaRegion* head = arena->region_pool;
+
+    while (head) {
+        if (head->size - head->off <= sizeof(ArenaRegion)) {
+            ArenaRegion* region = head->data + head->off;
+            region->data = ARENA_ALLOC_PAGE(size);
+            region->size = size;
+            region->off = 0;
+            region->next = NULL;
+            return region;
+        }
+
+        head = head->next;
+    }
+
+    head = ARENA_ALLOC_SMOL(sizeof(ArenaRegion));
+    head->next = arena->region_pool;
+    arena->region_pool = head;
+
+    head->data = ARENA_ALLOC_PAGE(size);
+    head->size = size;
+    head->off = 0;
+    head->next = NULL;
+    return head;
 }
 
 void* arena_alloc(Arena* arena, size_t sz) {
@@ -61,7 +84,7 @@ void* arena_alloc(Arena* arena, size_t sz) {
         head = head->next;
     }
 
-    head = arena_alloc_region(arena_align_ptr(sz, ARENA_PAGE_SIZE));
+    head = arena_alloc_region(arena, arena_align_ptr(sz, ARENA_PAGE_SIZE));
     head->next = arena->head;
     arena->head = head;
 
