@@ -97,6 +97,7 @@ void arena_free(Arena* arena) {
     ArenaRegion* head = arena->head;
     while (head) {
         head->off = 0;
+        head = head->next;
     }
 }
 
