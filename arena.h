@@ -47,7 +47,7 @@ ArenaRegion* arena_alloc_region(Arena* arena, size_t size) {
 
     while (head) {
         if (head->size - head->off <= sizeof(ArenaRegion)) {
-            ArenaRegion* region = head->data + head->off;
+            ArenaRegion* region = (void*)((uint8_t*)head->data + head->off);
             region->data = ARENA_ALLOC_PAGE(size);
             region->size = size;
             region->off = 0;
@@ -76,7 +76,7 @@ void* arena_alloc(Arena* arena, size_t sz) {
 
     while (head) {
         if (head->size - head->off <= sz) {
-            void* ptr = head->data + head->off;
+            void* ptr = (void*)((uint8_t*)head->data + head->off);
             head->off += sz;
             return ptr;
         }
@@ -88,7 +88,7 @@ void* arena_alloc(Arena* arena, size_t sz) {
     head->next = arena->head;
     arena->head = head;
 
-    void* ptr = head->data + head->off;
+    void* ptr = (void*)((uint8_t*)head->data + head->off);
     head->off += sz;
     return ptr;
 }
