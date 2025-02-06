@@ -18,6 +18,7 @@ typedef struct {
 void* arena_alloc(Arena*, size_t);
 void arena_free(Arena*);
 void* arena_realloc(Arena* a, void* ptr, size_t old_sz, size_t new_sz);
+void arena_reserve(Arena*, size_t);
 
 #ifdef ARENA_H_IMPLEMENTATION
 
@@ -104,10 +105,28 @@ void arena_free(Arena* arena) {
     }
 }
 
-void* arena_realloc(Arena* a, void* ptr, size_t old_sz, size_t new_sz) {
-    void* new_ptr = arena_alloc(a, new_sz);
+void* arena_realloc(Arena* arena, void* ptr, size_t old_sz, size_t new_sz) {
+    void* new_ptr = arena_alloc(arena, new_sz);
     memcpy(new_ptr, ptr, old_sz);
     return new_ptr;
+}
+
+void arena_reserve(Arena* arena, size_t sz) {
+    size_t free = 0;
+
+    ArenaRegion* head = arena->head;
+    while (head) {
+        free += head->size - head->off;
+        head = head->next;
+    }
+
+    if (free >= sz) {
+        return;
+    }
+
+    head = arena_alloc_region(arena, arena_align_ptr(sz - free, ARENA_PAGE_SIZE));
+    head->next = arena->head;
+    arena->head = head;
 }
 
 #endif // ARENA_H_IMPLEMENTATION
