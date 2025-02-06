@@ -17,6 +17,7 @@ typedef struct {
 
 void* arena_alloc(Arena*, size_t);
 void arena_free(Arena*);
+void* arena_realloc(Arena* a, void* ptr, size_t old_sz, size_t new_sz);
 
 #ifdef ARENA_H_IMPLEMENTATION
 
@@ -33,6 +34,8 @@ void arena_free(Arena*);
 #error "Only UNIX-like systems are supported"
 
 #endif // unix check
+
+#include <string.h>
 
 #define ARENA_PAGE_SIZE 4096
 
@@ -99,6 +102,12 @@ void arena_free(Arena* arena) {
         head->off = 0;
         head = head->next;
     }
+}
+
+void* arena_realloc(Arena* a, void* ptr, size_t old_sz, size_t new_sz) {
+    void* new_ptr = arena_alloc(a, new_sz);
+    memcpy(new_ptr, ptr, old_sz);
+    return new_ptr;
 }
 
 #endif // ARENA_H_IMPLEMENTATION
