@@ -2,6 +2,11 @@
 #define ARENA_H_
 
 #include <stdint.h>
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 typedef struct ArenaRegion {
     struct ArenaRegion* next;
@@ -19,6 +24,10 @@ void* arena_alloc(Arena*, size_t);
 void arena_free(Arena*);
 void* arena_realloc(Arena* a, void* ptr, size_t old_sz, size_t new_sz);
 void arena_reserve(Arena*, size_t);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #ifdef ARENA_H_IMPLEMENTATION
 
