@@ -21,6 +21,7 @@ typedef struct {
 } Arena;
 
 void* arena_alloc(Arena*, size_t);
+void* arena_zalloc(Arena*, size_t);
 void arena_free(Arena*);
 void* arena_realloc(Arena* a, void* ptr, size_t old_sz, size_t new_sz);
 void arena_reserve(Arena*, size_t);
@@ -116,6 +117,12 @@ void* arena_alloc(Arena* arena, size_t sz) {
 
     void* ptr = (void*)((uint8_t*)head->data + head->off);
     head->off += sz;
+    return ptr;
+}
+
+void* arena_zalloc(Arena* arena, size_t sz) {
+    void* ptr = arena_alloc(arena, sz);
+    memset(ptr, 0, sz);
     return ptr;
 }
 
