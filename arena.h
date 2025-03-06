@@ -24,6 +24,9 @@ void* arena_alloc(Arena*, size_t);
 void arena_free(Arena*);
 void* arena_realloc(Arena* a, void* ptr, size_t old_sz, size_t new_sz);
 void arena_reserve(Arena*, size_t);
+void arena_destroy(Arena*);
+
+size_t arena_avail(const Arena*);
 
 #ifdef __cplusplus
 }
@@ -45,6 +48,13 @@ void arena_reserve(Arena*, size_t);
 
 #endif // unix check
 
+#ifndef ARENA_ASSERT
+
+#include <assert.h>
+#define ARENA_ASSERT assert
+
+#endif // ARENA_ASSSERT
+
 #include <string.h>
 
 #define ARENA_PAGE_SIZE 4096
@@ -61,10 +71,13 @@ ArenaRegion* arena_alloc_region(Arena* arena, size_t size) {
     while (head) {
         if (head->size - head->off >= sizeof(ArenaRegion)) {
             ArenaRegion* region = (ArenaRegion*)((uint8_t*)head->data + head->off);
+
             region->data = ARENA_ALLOC_PAGE(size);
+            ARENA_ASSERT(region->data != (void*)-1);
             region->size = size;
             region->off = 0;
             region->next = NULL;
+
             return region;
         }
 
@@ -136,6 +149,27 @@ void arena_reserve(Arena* arena, size_t sz) {
     head = arena_alloc_region(arena, arena_align_ptr(sz - free, ARENA_PAGE_SIZE));
     head->next = arena->head;
     arena->head = head;
+}
+
+void arena_destroy(Arena* arena) {
+    ArenaRegion* head = arena->head;
+
+    while (head) {
+        ARENA_ASSERT(munmap(head->data, head->size) == 0);
+        head = head->next;
+    }
+}
+
+size_t arena_avail(const Arena* a) {
+    ArenaRegion* head = a->head;
+
+    size_t res = 0;
+    while (head) {
+        res += head->size - head->off;
+        head = head->next;
+    }
+
+    return res;
 }
 
 #endif // ARENA_H_IMPLEMENTATION
